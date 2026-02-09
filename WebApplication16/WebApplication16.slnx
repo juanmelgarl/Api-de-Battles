@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="WebApplication16.Core/WebApplication16.Core.csproj" />
+  <Project Path="WebApplication16.Domain/WebApplication16.Domain.csproj" />
+  <Project Path="WebApplication16.Infrastructure/WebApplication16.Infrastructure.csproj" />
+  <Project Path="WebApplication16/WebApplication16.csproj" />
+</Solution>
