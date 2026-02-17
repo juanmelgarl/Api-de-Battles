@@ -2,12 +2,13 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
+using System.Reflection;
 using WebApplication16.Core.Command;
 using WebApplication16.Core.DTOS.Response;
 using WebApplication16.Domain.Interfaces;
 using WebApplication16.Infrastructure;
 using WebApplication16.Infrastructure.Data;
-using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
@@ -23,11 +24,18 @@ builder.Services.AddMediatR(typeof(CreateBattleCommmand));
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowLocal", builder =>
-        builder.WithOrigins("https://localhost:3000","https://localhost:5173")
-               .AllowAnyHeader()
-               .AllowAnyMethod());
+    options.AddPolicy("AllowAngular", policy =>
+    {
+        policy.WithOrigins("http://localhost:4200")
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
 });
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 var app = builder.Build(); app.UseCors("AllowLocal");
@@ -38,6 +46,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.UseSerilogRequestLogging();
+
+app.UseCors("AllowAngular");
 
 app.UseHttpsRedirection();
 
