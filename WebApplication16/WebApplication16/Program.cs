@@ -33,8 +33,12 @@ builder.Services.AddCors(options =>
 });
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .Enrich.WithClientIp()
+    .Enrich.WithUserClaims()
+  
     .CreateLogger();
-
+builder.Services.AddHttpContextAccessor();
 builder.Host.UseSerilog();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
