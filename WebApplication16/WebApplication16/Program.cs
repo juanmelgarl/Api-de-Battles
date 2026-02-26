@@ -1,9 +1,12 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using MediatR;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Reflection;
+using System.Text;
 using WebApplication16.Core.Command;
 using WebApplication16.Core.DTOS.Response;
 using WebApplication16.Domain.Interfaces;
@@ -14,23 +17,35 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddMemoryCache();
 builder.Services.AddControllers();
-// Registrar validadores de forma explícita para evitar escaneos innecesarios:
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
-// Habilitar la validación automática:
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("PruebaClean")));
 builder.Services.AddScoped<IBattleRepository, Battlerepository>();
 builder.Services.AddMediatR(typeof(CreateBattleCommmand));
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddCors(options =>
+var jwtKey = builder.Configuration["Jwt:Key"];
+var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+var jwtAudience = builder.Configuration["Jwt:Audience"];
+builder.Services.AddAuthentication(options =>
 {
-    options.AddPolicy("AllowAngular", policy =>
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+    .AddJwtBearer(options =>
     {
-        policy.WithOrigins("http://localhost:4200")
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer, // Ahora usa el valor del JSON
+            ValidAudience = jwtAudience, // Ahora usa el valor del JSON
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)) // Lee la key del JSON
+        };
     });
-});
+
+
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
@@ -39,11 +54,10 @@ Log.Logger = new LoggerConfiguration()
   
     .CreateLogger();
 builder.Services.AddHttpContextAccessor();
-builder.Host.UseSerilog();
+builder.Host.UseSerilog(); builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-var app = builder.Build(); app.UseCors("AllowLocal");
-
+var app = builder.Build(); 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -52,7 +66,7 @@ if (app.Environment.IsDevelopment())
 }
 app.UseSerilogRequestLogging();
 
-app.UseCors("AllowAngular");
+app.UseAuthentication(); // Must come before UseAuthorization
 
 app.UseHttpsRedirection();
 
